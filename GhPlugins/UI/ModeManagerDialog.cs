@@ -7,6 +7,11 @@ using Eto.Forms;
 using GhPlugins.Models;
 using GhPlugins.Services;
 using Rhino;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace GhPlugins.UI
 {
@@ -116,15 +121,32 @@ namespace GhPlugins.UI
 
         private void CreateEnvironment()
         {
-            PluginScanner.ScanDefaultPluginFolders();
-            allPlugins = PluginScanner.pluginItems;
+            if (PluginScanner.pluginItems == null || PluginScanner.pluginItems.Count == 0)
+            {
+                var loaded = Info.Tools.LoadScan();
 
-            var checkForm = new CheckBoxForm(
-                allPlugins,
+                if (loaded != null && loaded.Count > 0)
+                {
+                    PluginScanner.pluginItems = loaded;
+                }
+                else
+                {
+                    // Nothing to load → perform fresh scan
+                    PluginScanner.ScanDefaultPluginFolders(); // <-- your actual scan method here
+
+                    // Save the new scan result
+                    Info.Tools.SaveScan(PluginScanner.pluginItems);
+                }
+
+                allPlugins = PluginScanner.pluginItems;
+            }
+
+            var checkForm = new CheckBoxForm(PluginScanner.pluginItems,
+
                 true,
                 () =>
                 {
-                    PluginScanner.ScanDefaultPluginFolders();
+                    ;
                     return PluginScanner.pluginItems;
                 });
 
@@ -150,26 +172,45 @@ namespace GhPlugins.UI
 
         private void ManualPluginSelection()
         {
-            PluginScanner.ScanDefaultPluginFolders();
-            allPlugins = PluginScanner.pluginItems;
 
-            var checkForm = new CheckBoxForm(
-                allPlugins,
+
+            if (PluginScanner.pluginItems == null || PluginScanner.pluginItems.Count == 0)
+            {
+                var loaded= Info.Tools.LoadScan();
+
+                if (loaded != null && loaded.Count > 0)
+                {
+                    PluginScanner.pluginItems = loaded;
+                }
+                else
+                {
+                    // Nothing to load → perform fresh scan
+                    PluginScanner.ScanDefaultPluginFolders(); // <-- your actual scan method here
+
+                    // Save the new scan result
+                    Info.Tools.SaveScan(PluginScanner.pluginItems);
+                }
+
+                allPlugins = PluginScanner.pluginItems;
+            }
+
+            var checkForm = new CheckBoxForm(PluginScanner.pluginItems,
+                
                 true,
                 () =>
                 {
-                    PluginScanner.ScanDefaultPluginFolders();
+                    ;
                     return PluginScanner.pluginItems;
                 });
 
-            // Or without onRescan:
+            
             // var checkForm = new CheckBoxForm(allPlugins, true);
 
             if (checkForm.ShowModal(this) == DialogResult.Ok)
             {
                 selectedEnvironment = new ModeConfig(
                     "Manual",
-                    allPlugins.Where(p => p.IsSelected).ToList()
+                    PluginScanner.pluginItems.Where(p => p.IsSelected).ToList()
                 );
 
                 launchButton.Enabled = selectedEnvironment.Plugins != null && selectedEnvironment.Plugins.Count > 0;
@@ -200,8 +241,9 @@ namespace GhPlugins.UI
         {
             var env = selectedEnvironment ?? new ModeConfig("Manual", allPlugins.Where(p => p.IsSelected).ToList());
 
-            GhPluginBlocker.applyPluginDisable(allPlugins, env);
+           // GhPluginBlocker.applyPluginDisable(allPlugins, env);
             GhPluginBlocker.ApplyBlocking(allPlugins);
+            ScanReport.Save(allPlugins);
 
             try
             {

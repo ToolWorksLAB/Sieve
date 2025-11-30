@@ -44,7 +44,7 @@ namespace GhPlugins.Services
                     p.Name,
                    // p.Path,
                     p.IsSelected,
-                    
+                    p.LocationType,
                     Author = p.Author,
                     p.Description,
                     ghaPath  = p.GhaPaths ?? new List<string>(),

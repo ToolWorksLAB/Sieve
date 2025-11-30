@@ -1,9 +1,9 @@
-﻿using GhPlugins.Models;
-using Rhino;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GhPlugins.Models;
+using Rhino;
 
 namespace GhPlugins.Services
 {
@@ -18,21 +18,24 @@ namespace GhPlugins.Services
 
             string roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
+            // User Libraries
             string userLibPath = Path.Combine(roaming, "Grasshopper", "Libraries");
             if (Directory.Exists(userLibPath))
-                ScanDirectory(userLibPath);
+                ScanDirectory(userLibPath, "Libraries");
 
-            string userobjPath = Path.Combine(roaming, "Grasshopper", "UserObjects");
-            if (Directory.Exists(userobjPath))
-                ScanDirectory(userobjPath);
+            // UserObjects
+            string userObjPath = Path.Combine(roaming, "Grasshopper", "UserObjects");
+            if (Directory.Exists(userObjPath))
+                ScanDirectory(userObjPath, "UserObjects");
 
-            // Yak (7 + 8 trees)
+            // Yak packages (Rhino 7 + 8 trees)
             string yakRoot = Path.Combine(roaming, "McNeel", "Rhinoceros", "packages");
             if (Directory.Exists(yakRoot))
-                ScanDirectory(yakRoot);
+                ScanDirectory(yakRoot, "packages");
         }
 
         // ---------- helpers ----------
+
         private static IEnumerable<string> GetFilesWithDisabled(string path, string ext)
         {
             return Directory
@@ -45,10 +48,13 @@ namespace GhPlugins.Services
         private static string FileNameWithoutDoubleExtension(string fullPath, string ext)
         {
             string p = fullPath;
+
             if (p.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
                 p = p.Substring(0, p.Length - ".disabled".Length);
+
             if (p.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
                 return Path.GetFileNameWithoutExtension(p);
+
             return Path.GetFileNameWithoutExtension(fullPath);
         }
 
@@ -71,20 +77,26 @@ namespace GhPlugins.Services
                 // ...\packages\<major>\<pkg>\<version>\file.gha -> <version>
                 string dir = Path.GetDirectoryName(ghaPath);
                 string verFolder = Path.GetFileName(dir);
-                Version v;
-                return Version.TryParse(verFolder, out v) ? v : new Version(0, 0, 0, 0);
+
+                if (Version.TryParse(verFolder, out var v))
+                    return v;
+
+                return new Version(0, 0, 0, 0);
             }
-            catch { return new Version(0, 0, 0, 0); }
+            catch
+            {
+                return new Version(0, 0, 0, 0);
+            }
         }
 
         private static Version ParseVersionSafe(string versionString, string ghaPath)
         {
-            if (!string.IsNullOrWhiteSpace(versionString))
+            if (!string.IsNullOrWhiteSpace(versionString) &&
+                Version.TryParse(versionString, out var v))
             {
-                Version v;
-                if (Version.TryParse(versionString, out v))
-                    return v;
+                return v;
             }
+
             return ParseYakVersionFromPath(ghaPath);
         }
 
@@ -93,26 +105,34 @@ namespace GhPlugins.Services
             if (!item.HasGhaPath(path))
             {
                 item.GhaPaths.Add(path);
-                item.Versions.Add(versionStr ?? "");
+                item.Versions.Add(versionStr ?? string.Empty);
             }
         }
 
         private static void MaybeUpdateActiveIndexToNewest(PluginItem item)
         {
-            if (item == null || item.GhaPaths == null || item.GhaPaths.Count == 0) return;
+            if (item == null || item.GhaPaths == null || item.GhaPaths.Count == 0)
+                return;
 
             int currentMajor = RhinoApp.ExeVersion; // 7 or 8
 
             int bestIdx = 0;
-            Version bestVer = ParseVersionSafe(item.Versions.Count > 0 ? item.Versions[0] : null, item.GhaPaths[0]);
-            bool bestYakCurrent = item.GhaPaths[0].IndexOf("\\packages\\" + currentMajor + ".", StringComparison.OrdinalIgnoreCase) >= 0;
+            Version bestVer = ParseVersionSafe(
+                item.Versions.Count > 0 ? item.Versions[0] : null,
+                item.GhaPaths[0]
+            );
+
+            bool bestYakCurrent = item.GhaPaths[0]
+                .IndexOf("\\packages\\" + currentMajor + ".", StringComparison.OrdinalIgnoreCase) >= 0;
 
             for (int i = 1; i < item.GhaPaths.Count; i++)
             {
                 string p = item.GhaPaths[i];
                 string vStr = (i < item.Versions.Count) ? item.Versions[i] : null;
                 Version v = ParseVersionSafe(vStr, p);
-                bool yakCurr = p.IndexOf("\\packages\\" + currentMajor + ".", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                bool yakCurr = p
+                    .IndexOf("\\packages\\" + currentMajor + ".", StringComparison.OrdinalIgnoreCase) >= 0;
 
                 if (v > bestVer || (v == bestVer && yakCurr && !bestYakCurrent))
                 {
@@ -126,8 +146,41 @@ namespace GhPlugins.Services
                 item.ActiveVersionIndex = bestIdx;
         }
 
-        private static void ScanDirectory(string path)
+        /// <summary>
+        /// For a .gha (especially under packages), collect any .dlls in the same folder
+        /// and add them to item.DllPaths (no duplicates, case-insensitive).
+        /// </summary>
+        private static void AddAssociatedDlls(PluginItem item, string ghaPath)
         {
+            string dir = Path.GetDirectoryName(ghaPath);
+            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+                return;
+
+            IEnumerable<string> dllFiles;
+            try
+            {
+                dllFiles = Directory.EnumerateFiles(dir, "*.dll", SearchOption.TopDirectoryOnly);
+            }
+            catch
+            {
+                return;
+            }
+
+            foreach (string dll in dllFiles)
+            {
+                bool alreadyAdded = item.DllPaths
+                    .Any(p => string.Equals(p, dll, StringComparison.OrdinalIgnoreCase));
+
+                if (!alreadyAdded)
+                    item.DllPaths.Add(dll);
+            }
+        }
+
+        private static void ScanDirectory(string path, string pathName)
+        {
+            bool isPackagesFolder =
+                pathName.Equals("packages", StringComparison.OrdinalIgnoreCase);
+
             // ---------- GHA ----------
             foreach (string gha in GetFilesWithDisabled(path, ".gha"))
             {
@@ -140,34 +193,49 @@ namespace GhPlugins.Services
                 if (File.Exists(cleanPath))
                 {
                     var info = GhaInfoReader.ReadPluginInfo(cleanPath);
+
                     name = (info != null && !string.IsNullOrWhiteSpace(info.Name))
                         ? info.Name
                         : FileNameWithoutDoubleExtension(gha, ".gha");
-                    if (info != null) version = info.Version;
+
+                    if (info != null)
+                        version = info.Version;
                 }
                 else
                 {
                     name = FileNameWithoutDoubleExtension(gha, ".gha");
                 }
 
-                int idx = pluginItems.FindIndex(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                int idx = pluginItems.FindIndex(p =>
+                    p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+                PluginItem item;
+
                 if (idx >= 0)
                 {
-                    PluginItem item = pluginItems[idx];
+                    item = pluginItems[idx];
                     EnsureParallelAdd(item, cleanPath, version);
-                    MaybeUpdateActiveIndexToNewest(item);
-                    item.IsSelected = item.IsSelected || (!wasDisabled && File.Exists(cleanPath));
                 }
                 else
                 {
-                    PluginItem item = new PluginItem(name)
+                    item = new PluginItem(name)
                     {
-                        IsSelected = (!wasDisabled && File.Exists(cleanPath))
+                        IsSelected = (!wasDisabled && File.Exists(cleanPath)),
+                        LocationType = pathName
                     };
+
                     EnsureParallelAdd(item, cleanPath, version);
-                    MaybeUpdateActiveIndexToNewest(item);
                     pluginItems.Add(item);
                 }
+
+                MaybeUpdateActiveIndexToNewest(item);
+
+                // Update selection flag
+                item.IsSelected = item.IsSelected || (!wasDisabled && File.Exists(cleanPath));
+
+                // If this is from the packages tree, add associated DLLs from the same folder
+                if (isPackagesFolder)
+                    AddAssociatedDlls(item, cleanPath);
             }
 
             // ---------- GHUSER ----------
@@ -176,24 +244,33 @@ namespace GhPlugins.Services
                 bool wasDisabled = uo.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
                 string cleanPath = RemoveDisabledSuffix(uo);
 
-                string userObjectName = PluginReader.ReadUserObject(File.Exists(cleanPath) ? cleanPath : uo);
+                string userObjectName = PluginReader.ReadUserObject(
+                    File.Exists(cleanPath) ? cleanPath : uo
+                );
+
                 if (string.IsNullOrWhiteSpace(userObjectName))
                     userObjectName = FileNameWithoutDoubleExtension(uo, ".ghuser");
 
-                int idx = pluginItems.FindIndex(o => o.Name.Equals(userObjectName, StringComparison.OrdinalIgnoreCase));
+                int idx = pluginItems.FindIndex(o =>
+                    o.Name.Equals(userObjectName, StringComparison.OrdinalIgnoreCase));
+
                 if (idx >= 0)
                 {
-                    if (!pluginItems[idx].HasUserObjectPath(cleanPath))
-                        pluginItems[idx].UserobjectPath.Add(cleanPath);
+                    var existing = pluginItems[idx];
 
-                    pluginItems[idx].IsSelected = pluginItems[idx].IsSelected || (!wasDisabled && File.Exists(cleanPath));
+                    if (!existing.HasUserObjectPath(cleanPath))
+                        existing.UserobjectPath.Add(cleanPath);
+
+                    existing.IsSelected = existing.IsSelected || (!wasDisabled && File.Exists(cleanPath));
                 }
                 else
                 {
                     PluginItem orphan = new PluginItem(userObjectName)
                     {
-                        IsSelected = (!wasDisabled && File.Exists(cleanPath))
+                        IsSelected = (!wasDisabled && File.Exists(cleanPath)),
+                        LocationType = pathName
                     };
+
                     orphan.UserobjectPath.Add(cleanPath);
                     pluginItems.Add(orphan);
                 }
@@ -207,20 +284,26 @@ namespace GhPlugins.Services
 
                 string ghpyName = GetGhpyName(ghpy);
 
-                int idx = pluginItems.FindIndex(o => o.Name.Equals(ghpyName, StringComparison.OrdinalIgnoreCase));
+                int idx = pluginItems.FindIndex(o =>
+                    o.Name.Equals(ghpyName, StringComparison.OrdinalIgnoreCase));
+
                 if (idx >= 0)
                 {
-                    if (!pluginItems[idx].HasGhpyPath(cleanPath))
-                        pluginItems[idx].ghpyPath.Add(cleanPath);
+                    var existing = pluginItems[idx];
 
-                    pluginItems[idx].IsSelected = pluginItems[idx].IsSelected || (!wasDisabled && File.Exists(cleanPath));
+                    if (!existing.HasGhpyPath(cleanPath))
+                        existing.ghpyPath.Add(cleanPath);
+
+                    existing.IsSelected = existing.IsSelected || (!wasDisabled && File.Exists(cleanPath));
                 }
                 else
                 {
                     PluginItem item = new PluginItem(ghpyName)
                     {
-                        IsSelected = (!wasDisabled && File.Exists(cleanPath))
+                        IsSelected = (!wasDisabled && File.Exists(cleanPath)),
+                        LocationType = pathName
                     };
+
                     item.ghpyPath.Add(cleanPath);
                     pluginItems.Add(item);
                 }

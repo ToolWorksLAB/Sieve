@@ -26,6 +26,8 @@ namespace GhPlugins.Models
         /// <summary>All install locations (.gha FILE paths). GhaPaths[i] ↔ Versions[i]</summary>
         public List<string> GhaPaths { get; set; } = new List<string>();
 
+        public List<string> DllPaths { get; set; } = new List<string>();
+        public string LocationType { get; set; } = "Unknown";
         /// <summary>Index into GhaPaths/Versions that is selected. -1 means “not set”.</summary>
         public int ActiveVersionIndex { get; set; } = -1;   
 
