@@ -27,7 +27,7 @@ namespace GhPlugins.UI
 
         public ModeManagerDialog()
         {
-            Title = "Grasshopper Plugin Manager";
+            Title = "Grasshopper Environemnt Manager";
             ClientSize = new Size(730, 200);
             Resizable = false;
 
@@ -172,11 +172,9 @@ namespace GhPlugins.UI
 
         private void ManualPluginSelection()
         {
-
-
             if (PluginScanner.pluginItems == null || PluginScanner.pluginItems.Count == 0)
             {
-                var loaded= Info.Tools.LoadScan();
+                var loaded = Info.Tools.LoadScan();
 
                 if (loaded != null && loaded.Count > 0)
                 {
@@ -185,7 +183,7 @@ namespace GhPlugins.UI
                 else
                 {
                     // Nothing to load → perform fresh scan
-                    PluginScanner.ScanDefaultPluginFolders(); // <-- your actual scan method here
+                    PluginScanner.ScanDefaultPluginFolders(); // your real scan
 
                     // Save the new scan result
                     Info.Tools.SaveScan(PluginScanner.pluginItems);
@@ -194,17 +192,22 @@ namespace GhPlugins.UI
                 allPlugins = PluginScanner.pluginItems;
             }
 
-            var checkForm = new CheckBoxForm(PluginScanner.pluginItems,
-                
-                true,
-                () =>
+            var checkForm = new CheckBoxForm(
+                PluginScanner.pluginItems,
+                startUnchecked: true,
+                onRescan: () =>
                 {
-                    ;
+                    // Option 1: clear old items before re-scan (if your scan appends to the list)
+                    PluginScanner.pluginItems = new List<PluginItem>();
+
+                    // Run a fresh scan
+                    PluginScanner.ScanDefaultPluginFolders();
+
+                    // Save new result if you want
+                    Info.Tools.SaveScan(PluginScanner.pluginItems);
+
                     return PluginScanner.pluginItems;
                 });
-
-            
-            // var checkForm = new CheckBoxForm(allPlugins, true);
 
             if (checkForm.ShowModal(this) == DialogResult.Ok)
             {
@@ -213,9 +216,11 @@ namespace GhPlugins.UI
                     PluginScanner.pluginItems.Where(p => p.IsSelected).ToList()
                 );
 
-                launchButton.Enabled = selectedEnvironment.Plugins != null && selectedEnvironment.Plugins.Count > 0;
+                launchButton.Enabled = selectedEnvironment.Plugins != null
+                                       && selectedEnvironment.Plugins.Count > 0;
             }
         }
+
 
         private void SelectSavedEnvironment()
         {

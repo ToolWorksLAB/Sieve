@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using GhPlugins.Models;
+using Grasshopper.Kernel.Data;
 using Rhino;
 
 namespace GhPlugins.Services
@@ -63,7 +64,7 @@ namespace GhPlugins.Services
                             Toggle(path, enable: false);
 
                         // Then (re)enable the primary one according to selection state
-                        var primaryGha = plugin.GhaPaths[0];
+                        var primaryGha = plugin.GhaPaths[plugin.GhaPaths.Count-1];
                         if (!string.IsNullOrWhiteSpace(primaryGha))
                         {
                             Toggle(primaryGha, enable: selected);
