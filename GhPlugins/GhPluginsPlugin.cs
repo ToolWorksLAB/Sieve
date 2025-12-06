@@ -2,7 +2,7 @@
 using Rhino.PlugIns;
 using System;
 
-namespace GhPlugins
+namespace Sieve
 {
     ///<summary>
     /// <para>Every RhinoCommon .rhp assembly must have one and only one PlugIn-derived
@@ -12,13 +12,13 @@ namespace GhPlugins
     /// attributes in AssemblyInfo.cs (you might need to click "Project" ->
     /// "Show All Files" to see it in the "Solution Explorer" window).</para>
     ///</summary>
-    public class GhPluginsPlugin : Rhino.PlugIns.PlugIn
+    public class GhPluginsPlugin : PlugIn
     {
         protected override LoadReturnCode OnLoad(ref string errorMessage)
         {
             // Safety: if last session left things blocked (crash/kill), restore now.
-            try { Services.GhPluginBlocker.UnblockEverything(); }
-            catch (Exception ex) { RhinoApp.WriteLine("[GhPlugins] Startup restore failed: " + ex.Message); }
+            try { Sieve.services.GhPluginBlocker.UnblockEverything(); }
+            catch (Exception ex) { RhinoApp.WriteLine("[Sieve] Startup restore failed: " + ex.Message); }
 
             return LoadReturnCode.Success;
         }
@@ -26,12 +26,12 @@ namespace GhPlugins
         protected override void OnShutdown()
         {
             // Always restore default Grasshopper (all plugins enabled) on Rhino exit
-            try { Services.GhPluginBlocker.UnblockEverything(); }
-            catch (Exception ex) { RhinoApp.WriteLine("[GhPlugins] Shutdown restore failed: " + ex.Message); }
+            try { services.GhPluginBlocker.UnblockEverything(); }
+            catch (Exception ex) { RhinoApp.WriteLine("[Sieve] Shutdown restore failed: " + ex.Message); }
             base.OnShutdown();
         }
         ///<summary>Gets the only instance of the GhPluginsPlugin plug-in.</summary>
-        
+
 
         // You can override methods here to change the plug-in behavior on
         // loading and shut down, add options pages to the Rhino _Option command

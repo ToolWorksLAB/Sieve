@@ -4,16 +4,17 @@ using System.Reflection;
 using System.Linq;
 using Eto.Drawing;
 using Eto.Forms;
-using GhPlugins.Models;
-using GhPlugins.Services;
 using Rhino;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
+using Sieve.services;
+using Sieve.Models;
+using Sieve.UI;
 
-namespace GhPlugins.UI
+namespace Sieve.UI
 {
     public class ModeManagerDialog : Dialog
     {
@@ -73,10 +74,23 @@ namespace GhPlugins.UI
 
             Control logoControl;
             var asm = Assembly.GetExecutingAssembly();
-            using (var ls = asm.GetManifestResourceStream("GhPlugins.Resources.logo.png"))
-                logoControl = ls != null ? (Control)new ImageView { Image = new Bitmap(ls), Size = logoSize }
-                                         : new Panel { Size = logoSize };
 
+            Bitmap logoBitmap = null;
+            using (var stream = asm.GetManifestResourceStream("Sieve.Resources.logo.png"))
+            {
+                if (stream != null)
+                    logoBitmap = new Bitmap(stream);
+            }
+
+            if (logoBitmap != null)
+            {
+                logoControl = new ImageView { Image = logoBitmap, Size = logoSize };
+            }
+            else
+            {
+                logoControl = new Panel { Size = logoSize };
+            }
+;
             var topRow = new TableLayout
             {
                 Padding = new Padding(24, 20, 24, 10),
@@ -123,6 +137,13 @@ namespace GhPlugins.UI
         {
             if (PluginScanner.pluginItems == null || PluginScanner.pluginItems.Count == 0)
             {
+
+                /* Unmerged change from project 'Sieve (net7.0)'
+                Before:
+                                var loaded = Info.Tools.LoadScan();
+                After:
+                                var loaded = Tools.LoadScan();
+                */
                 var loaded = Info.Tools.LoadScan();
 
                 if (loaded != null && loaded.Count > 0)
@@ -135,6 +156,15 @@ namespace GhPlugins.UI
                     PluginScanner.ScanDefaultPluginFolders(); // <-- your actual scan method here
 
                     // Save the new scan result
+
+                    /* Unmerged change from project 'Sieve (net7.0)'
+                    Before:
+                                        Info.Tools.SaveScan(PluginScanner.pluginItems);
+                                    }
+                    After:
+                                        Tools.SaveScan(PluginScanner.pluginItems);
+                                    }
+                    */
                     Info.Tools.SaveScan(PluginScanner.pluginItems);
                 }
 
@@ -174,6 +204,13 @@ namespace GhPlugins.UI
         {
             if (PluginScanner.pluginItems == null || PluginScanner.pluginItems.Count == 0)
             {
+
+                /* Unmerged change from project 'Sieve (net7.0)'
+                Before:
+                                var loaded = Info.Tools.LoadScan();
+                After:
+                                var loaded = Tools.LoadScan();
+                */
                 var loaded = Info.Tools.LoadScan();
 
                 if (loaded != null && loaded.Count > 0)
@@ -186,6 +223,15 @@ namespace GhPlugins.UI
                     PluginScanner.ScanDefaultPluginFolders(); // your real scan
 
                     // Save the new scan result
+
+                    /* Unmerged change from project 'Sieve (net7.0)'
+                    Before:
+                                        Info.Tools.SaveScan(PluginScanner.pluginItems);
+                                    }
+                    After:
+                                        Tools.SaveScan(PluginScanner.pluginItems);
+                                    }
+                    */
                     Info.Tools.SaveScan(PluginScanner.pluginItems);
                 }
 
@@ -193,22 +239,27 @@ namespace GhPlugins.UI
             }
 
             var checkForm = new CheckBoxForm(
-                PluginScanner.pluginItems,
-                startUnchecked: true,
-                onRescan: () =>
-                {
-                    // Option 1: clear old items before re-scan (if your scan appends to the list)
-                    PluginScanner.pluginItems = new List<PluginItem>();
+    PluginScanner.pluginItems,
+    startUnchecked: false,
+    onRescan: () =>
+    {
+        // No need to reset allPlugins here; focus on updating PluginScanner.pluginItems
+        PluginScanner.ScanDefaultPluginFolders();
 
-                    // Run a fresh scan
-                    PluginScanner.ScanDefaultPluginFolders();
+        // Save new result
 
-                    // Save new result if you want
-                    Info.Tools.SaveScan(PluginScanner.pluginItems);
+        /* Unmerged change from project 'Sieve (net7.0)'
+        Before:
+                Info.Tools.SaveScan(PluginScanner.pluginItems);
+        After:
+                Tools.SaveScan(PluginScanner.pluginItems);
+        */
+        Info.Tools.SaveScan(PluginScanner.pluginItems);
 
-                    return PluginScanner.pluginItems;
-                });
-
+        // IMPORTANT: return a *copy*, not the original list
+        allPlugins = PluginScanner.pluginItems;
+        return PluginScanner.pluginItems.ToList();
+    });
             if (checkForm.ShowModal(this) == DialogResult.Ok)
             {
                 selectedEnvironment = new ModeConfig(
@@ -246,7 +297,7 @@ namespace GhPlugins.UI
         {
             var env = selectedEnvironment ?? new ModeConfig("Manual", allPlugins.Where(p => p.IsSelected).ToList());
 
-           // GhPluginBlocker.applyPluginDisable(allPlugins, env);
+            // GhPluginBlocker.applyPluginDisable(allPlugins, env);
             GhPluginBlocker.ApplyBlocking(allPlugins);
             ScanReport.Save(allPlugins);
 
@@ -254,7 +305,7 @@ namespace GhPlugins.UI
             {
                 RhinoApp.WriteLine("[Gh Mode Manager] Environment applied.");
                 RhinoApp.Idle += LaunchGrasshopperOnIdle;
-                this.Close();
+                Close();
             }
             catch (Exception ex)
             {
@@ -265,14 +316,14 @@ namespace GhPlugins.UI
 
         private void LaunchGrasshopperOnIdle(object sender, EventArgs e)
         {
-            Rhino.RhinoApp.Idle -= LaunchGrasshopperOnIdle;
+            RhinoApp.Idle -= LaunchGrasshopperOnIdle;
 
             try
             {
-                Rhino.RhinoApp.RunScript("-_Grasshopper _Load _Enter", false);
+                RhinoApp.RunScript("-_Grasshopper _Load _Enter", false);
 
                 dynamic gh = null;
-                try { gh = Rhino.RhinoApp.GetPlugInObject("Grasshopper"); } catch { }
+                try { gh = RhinoApp.GetPlugInObject("Grasshopper"); } catch { }
 
                 bool editorLoaded = false;
                 if (gh != null)
@@ -284,19 +335,19 @@ namespace GhPlugins.UI
                     }
                 }
 
-                var t = new Eto.Forms.UITimer { Interval = 0.60 };
+                var t = new UITimer { Interval = 0.60 };
                 t.Elapsed += (s2, e2) =>
                 {
                     t.Stop();
                     try { gh?.ShowEditor(true); } catch { }
-                    Rhino.RhinoApp.RunScript("-_Grasshopper _Editor _Enter", false);
+                    RhinoApp.RunScript("-_Grasshopper _Editor _Enter", false);
                     RhinoApp.RunScript("_Grasshopper", false);
                 };
                 t.Start();
             }
             catch (Exception ex)
             {
-                Rhino.RhinoApp.WriteLine("ERROR launching Grasshopper: " + ex);
+                RhinoApp.WriteLine("ERROR launching Grasshopper: " + ex);
             }
         }
 

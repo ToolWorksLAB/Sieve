@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace GhPlugins.Models
+namespace Sieve.Models
 {
     public class PluginItem
     {
         public string Name { get; set; }
         /// <summary>Primary path (kept in sync with ActiveVersionIndex; may be null).</summary>
-        
+
         public bool IsSelected { get; set; }
 
         /// <summary>Versions[i] belongs to GhaPaths[i]. Strings as discovered (e.g., GH_AssemblyInfo or Yak folder).</summary>
@@ -29,12 +29,12 @@ namespace GhPlugins.Models
         public List<string> DllPaths { get; set; } = new List<string>();
         public string LocationType { get; set; } = "Unknown";
         /// <summary>Index into GhaPaths/Versions that is selected. -1 means “not set”.</summary>
-        public int ActiveVersionIndex { get; set; } = -1;   
+        public int ActiveVersionIndex { get; set; } = -1;
 
         public PluginItem(string name)
         {
             Name = name;
-         
+
             IsSelected = false;
         }
 
@@ -50,6 +50,6 @@ namespace GhPlugins.Models
 
         public bool HasGhpyPath(string p) =>
             !string.IsNullOrWhiteSpace(p) &&
-            ghpyPath.Any(x => string.Equals(x, p, System.StringComparison.OrdinalIgnoreCase));
+            ghpyPath.Any(x => string.Equals(x, p, StringComparison.OrdinalIgnoreCase));
     }
 }

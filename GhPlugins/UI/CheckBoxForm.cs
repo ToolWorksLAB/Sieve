@@ -1,12 +1,14 @@
 ﻿// File: UI/CheckBoxForm.cs
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using Eto.Forms;
 using Eto.Drawing;
-using GhPlugins.Models;
+using Sieve.Models;
 
-namespace GhPlugins.UI
+namespace Sieve.UI
 {
     public class CheckBoxForm : Dialog<DialogResult>
     {
@@ -17,6 +19,12 @@ namespace GhPlugins.UI
         private int? anchorRow;
         private List<int> selectionSnapshot; // <- snapshot of selected rows when edit starts
         private const int SelectedColIndex = 0;
+
+        // JSON file that stores custom paths (e.g. ghPlugin.Info.Paths.CustomPath)
+        public string CustomPathsJsonPath { get; set; }
+
+        // Optional: keeps the newly added paths in memory, if you want to inspect later
+        public List<string> AddedPaths { get; } = new List<string>();
 
         public CheckBoxForm(IList<PluginItem> plugins, bool startUnchecked = true)
         {
@@ -47,7 +55,7 @@ namespace GhPlugins.UI
                 DataCell = new CheckBoxCell
                 {
                     Binding = Binding.Property<PluginItem, bool>(x => x.IsSelected)
-                                     .Convert<bool?>(
+                                     .Convert(
                                          b => (bool?)b,
                                          nb => nb ?? false
                                      )
@@ -93,9 +101,9 @@ namespace GhPlugins.UI
                 bool newVal = view[e.Row].IsSelected;
 
                 // Prefer the snapshot if it has multiple rows; otherwise use current selection
-                var rows = (selectionSnapshot != null && selectionSnapshot.Count > 1)
+                var rows = selectionSnapshot != null && selectionSnapshot.Count > 1
                     ? selectionSnapshot
-                    : (grid.SelectedRows?.ToList() ?? new List<int>());
+                    : grid.SelectedRows?.ToList() ?? new List<int>();
 
                 if (rows.Count > 1)
                 {
@@ -163,10 +171,42 @@ namespace GhPlugins.UI
             var btnAll = new Button { Text = "Select All  (Ctrl+A)" };
             var btnNone = new Button { Text = "Select None (Ctrl+D)" };
             var btnInvert = new Button { Text = "Invert      (Ctrl+I)" };
+
+            // NEW: Add Path button with folder dialog + JSON update
+            var btnAddPath = new Button { Text = "Add Path" };
+            btnAddPath.Click += (s, e) =>
+            {
+                var dlg = new SelectFolderDialog
+                {
+                    Title = "Select plugin directory"
+                };
+
+                var result = dlg.ShowDialog(this);
+                if (result == DialogResult.Ok && !string.IsNullOrEmpty(dlg.Directory))
+                {
+                    var newPath = dlg.Directory;
+
+                    // keep in memory
+                    AddedPaths.Add(newPath);
+
+                    // append to JSON at CustomPathsJsonPath (e.g. ghPlugin.Info.Paths.CustomPath)
+
+                    /* Unmerged change from project 'Sieve (net7.0)'
+                    Before:
+                                        Info.Tools.AppendPathToJson(newPath);
+                                    }
+                    After:
+                                        Tools.AppendPathToJson(newPath);
+                                    }
+                    */
+                    Info.Tools.AppendPathToJson(newPath);
+                }
+            };
+
             var ok = new Button { Text = "OK", Font = new Font(SystemFont.Bold, 10) };
             var cancel = new Button { Text = "Cancel" };
 
-            // NEW semantics: apply to selection if any, otherwise to all in current filtered view
+            // apply to selection if any, otherwise to all in current filtered view
             btnAll.Click += (s, e) => { ApplyToSelectionOrAll(true); };
             btnNone.Click += (s, e) => { ApplyToSelectionOrAll(false); };
             btnInvert.Click += (s, e) => { InvertSelectionOrAll(); };
@@ -181,9 +221,13 @@ namespace GhPlugins.UI
                 Padding = new Padding(8),
                 Items =
                 {
-                    btnAll, btnNone, btnInvert,
+                    btnAddPath,
+                    btnAll,
+                    btnNone,
+                    btnInvert,
                     new StackLayoutItem(new Panel(), true),
-                    ok, cancel
+                    ok,
+                    cancel
                 }
             };
 
@@ -201,7 +245,7 @@ namespace GhPlugins.UI
             };
         }
 
-        // NEW overload to support the onRescan callback
+        // Overload to support the onRescan callback
         public CheckBoxForm(IList<PluginItem> plugins, bool startUnchecked, Func<IList<PluginItem>> onRescan)
             : this(plugins, startUnchecked)
         {
@@ -224,18 +268,17 @@ namespace GhPlugins.UI
                 };
 
                 // add it to the existing footer row
-                // (only if you already have footer buttons like OK/Cancel)
                 if (Content is TableLayout layout && layout.Rows.Count > 0)
                 {
                     var footerRow = layout.Rows.Last() as TableRow;
                     if (footerRow?.Cells?.FirstOrDefault()?.Control is StackLayout footerStack)
                     {
+                        // Insert rescan at the very beginning (before Add Path, etc.)
                         footerStack.Items.Insert(0, rescanButton);
                     }
                 }
             }
         }
-
 
         // Apply a value (true/false) to current grid selection; if none selected, apply to all filtered items
         private void ApplyToSelectionOrAll(bool value)
@@ -296,5 +339,7 @@ namespace GhPlugins.UI
             anchorRow = null;
             selectionSnapshot = null;
         }
+
+        // Append a new path string into the JSON file at CustomPathsJsonPath
     }
 }

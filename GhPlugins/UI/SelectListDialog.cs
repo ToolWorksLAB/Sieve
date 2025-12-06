@@ -1,7 +1,7 @@
 ﻿using Eto.Forms;
 using Eto.Drawing;
 
-namespace GhPlugins.UI
+namespace Sieve.UI
 {
     public class SelectListDialog : Dialog<DialogResult>
     {

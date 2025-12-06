@@ -3,11 +3,11 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
-using GhPlugins.Models;
 using Newtonsoft.Json;
 using Rhino;
+using Sieve.Models;
 
-namespace GhPlugins.Services
+namespace Sieve.services
 {
     public static class ScanReport
     {
@@ -22,7 +22,7 @@ namespace GhPlugins.Services
         {
             Directory.CreateDirectory(Root);
             var stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-            var name = "scan_" + (string.IsNullOrWhiteSpace(label) ? "" : (Sanitize(label) + "_")) + stamp + ".json";
+            var name = "scan_" + (string.IsNullOrWhiteSpace(label) ? "" : Sanitize(label) + "_") + stamp + ".json";
             var path = Path.Combine(Root, name);
 
             var report = new
@@ -35,19 +35,19 @@ namespace GhPlugins.Services
                 count = allPlugins != null ? allPlugins.Count : 0,
                 summary = new
                 {
-                   // gha = allPlugins?.Count(p => p.Path != null && p.Path.EndsWith(".gha", StringComparison.OrdinalIgnoreCase)) ?? 0,
+                    // gha = allPlugins?.Count(p => p.Path != null && p.Path.EndsWith(".gha", StringComparison.OrdinalIgnoreCase)) ?? 0,
                     ghpy = allPlugins?.Sum(p => p.ghpyPath != null ? p.ghpyPath.Count : 0) ?? 0,
                     ghuser = allPlugins?.Sum(p => p.UserobjectPath != null ? p.UserobjectPath.Count : 0) ?? 0
                 },
                 plugins = allPlugins?.Select(p => new
                 {
                     p.Name,
-                   // p.Path,
+                    // p.Path,
                     p.IsSelected,
                     p.LocationType,
-                    Author = p.Author,
+                    p.Author,
                     p.Description,
-                    ghaPath  = p.GhaPaths ?? new List<string>(),
+                    ghaPath = p.GhaPaths ?? new List<string>(),
                     Versions = p.Versions ?? new List<string>(),
                     ghpy = p.ghpyPath ?? new List<string>(),
                     userobjects = p.UserobjectPath ?? new List<string>()

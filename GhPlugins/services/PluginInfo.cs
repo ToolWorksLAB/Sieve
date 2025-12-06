@@ -4,7 +4,7 @@ using System.Reflection;
 using Grasshopper.Kernel;
 using Rhino;
 
-namespace GhPlugins.Services
+namespace Sieve.services
 {
     public class PluginInfo
     {
@@ -34,7 +34,7 @@ namespace GhPlugins.Services
 
                 if (infoType == null)
                 {
-                   // RhinoApp.WriteLine($"[GhaInfoReader] No usable GH_AssemblyInfo in: {ghaPath}");
+                    // RhinoApp.WriteLine($"[GhaInfoReader] No usable GH_AssemblyInfo in: {ghaPath}");
                     return null;
                 }
 
@@ -62,7 +62,7 @@ namespace GhPlugins.Services
             }
             catch (Exception ex)
             {
-               // RhinoApp.WriteLine($"[GhaInfoReader] Error reading {ghaPath}: {ex.Message}");
+                // RhinoApp.WriteLine($"[GhaInfoReader] Error reading {ghaPath}: {ex.Message}");
                 return null;
             }
         }

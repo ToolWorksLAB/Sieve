@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace GhPlugins.Models
+namespace Sieve.Models
 {
     public class ModeConfig
     {

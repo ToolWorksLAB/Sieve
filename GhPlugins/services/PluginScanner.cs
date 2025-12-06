@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using GhPlugins.Models;
 using Rhino;
+using Sieve.Models;
 
-namespace GhPlugins.Services
+namespace Sieve.services
 {
     public static class PluginScanner
     {
@@ -13,13 +14,33 @@ namespace GhPlugins.Services
 
         public static void ScanDefaultPluginFolders()
         {
-            // Always start fresh
             pluginItems.Clear();
+
+            /* Unmerged change from project 'Sieve (net7.0)'
+            Before:
+                        List<string> customPaths = Info.Tools.LoadCustomPaths();
+                        RhinoApp.WriteLine("Custom paths to scan: " + customPaths.Count);
+            After:
+                        List<string> customPaths = Tools.LoadCustomPaths();
+                        RhinoApp.WriteLine("Custom paths to scan: " + customPaths.Count);
+            */
+            List<string> customPaths = Info.Tools.LoadCustomPaths();
+            RhinoApp.WriteLine("Custom paths to scan: " + customPaths.Count);
+            foreach (var p in customPaths)
+            {
+                RhinoApp.WriteLine("Scanning custom path: " + p);
+                if (Directory.Exists(p))
+
+                    ScanDirectory(p, "packages");
+            }
+            // Always start fresh
+
 
             string roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
             // User Libraries
             string userLibPath = Path.Combine(roaming, "Grasshopper", "Libraries");
+
             if (Directory.Exists(userLibPath))
                 ScanDirectory(userLibPath, "Libraries");
 
@@ -128,13 +149,13 @@ namespace GhPlugins.Services
             for (int i = 1; i < item.GhaPaths.Count; i++)
             {
                 string p = item.GhaPaths[i];
-                string vStr = (i < item.Versions.Count) ? item.Versions[i] : null;
+                string vStr = i < item.Versions.Count ? item.Versions[i] : null;
                 Version v = ParseVersionSafe(vStr, p);
 
                 bool yakCurr = p
                     .IndexOf("\\packages\\" + currentMajor + ".", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                if (v > bestVer || (v == bestVer && yakCurr && !bestYakCurrent))
+                if (v > bestVer || v == bestVer && yakCurr && !bestYakCurrent)
                 {
                     bestVer = v;
                     bestYakCurrent = yakCurr;
@@ -194,7 +215,7 @@ namespace GhPlugins.Services
                 {
                     var info = GhaInfoReader.ReadPluginInfo(cleanPath);
 
-                    name = (info != null && !string.IsNullOrWhiteSpace(info.Name))
+                    name = info != null && !string.IsNullOrWhiteSpace(info.Name)
                         ? info.Name
                         : FileNameWithoutDoubleExtension(gha, ".gha");
 
@@ -220,7 +241,7 @@ namespace GhPlugins.Services
                 {
                     item = new PluginItem(name)
                     {
-                        IsSelected = (!wasDisabled && File.Exists(cleanPath)),
+                        IsSelected = !wasDisabled && File.Exists(cleanPath),
                         LocationType = pathName
                     };
 
@@ -231,7 +252,7 @@ namespace GhPlugins.Services
                 MaybeUpdateActiveIndexToNewest(item);
 
                 // Update selection flag
-                item.IsSelected = item.IsSelected || (!wasDisabled && File.Exists(cleanPath));
+                item.IsSelected = item.IsSelected || !wasDisabled && File.Exists(cleanPath);
 
                 // If this is from the packages tree, add associated DLLs from the same folder
                 if (isPackagesFolder)
@@ -261,13 +282,13 @@ namespace GhPlugins.Services
                     if (!existing.HasUserObjectPath(cleanPath))
                         existing.UserobjectPath.Add(cleanPath);
 
-                    existing.IsSelected = existing.IsSelected || (!wasDisabled && File.Exists(cleanPath));
+                    existing.IsSelected = existing.IsSelected || !wasDisabled && File.Exists(cleanPath);
                 }
                 else
                 {
                     PluginItem orphan = new PluginItem(userObjectName)
                     {
-                        IsSelected = (!wasDisabled && File.Exists(cleanPath)),
+                        IsSelected = !wasDisabled && File.Exists(cleanPath),
                         LocationType = pathName
                     };
 
@@ -294,13 +315,13 @@ namespace GhPlugins.Services
                     if (!existing.HasGhpyPath(cleanPath))
                         existing.ghpyPath.Add(cleanPath);
 
-                    existing.IsSelected = existing.IsSelected || (!wasDisabled && File.Exists(cleanPath));
+                    existing.IsSelected = existing.IsSelected || !wasDisabled && File.Exists(cleanPath);
                 }
                 else
                 {
                     PluginItem item = new PluginItem(ghpyName)
                     {
-                        IsSelected = (!wasDisabled && File.Exists(cleanPath)),
+                        IsSelected = !wasDisabled && File.Exists(cleanPath),
                         LocationType = pathName
                     };
 

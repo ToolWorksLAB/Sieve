@@ -5,7 +5,7 @@ using Rhino;
 using Rhino.Commands;
 using System.IO;
 
-namespace GhPlugins.Services
+namespace Sieve.services
 {
     public class PluginReader
     {
@@ -26,7 +26,7 @@ namespace GhPlugins.Services
         {
 
         }
-            public static string ReadUserObject(string path)
+        public static string ReadUserObject(string path)
         {
             var archive = new GH_Archive();
             if (!archive.ReadFromFile(path))
@@ -34,9 +34,9 @@ namespace GhPlugins.Services
                 RhinoApp.WriteLine("❌ Failed to read file: " + path);
                 return null;
             }
-          
+
             var userObject = new GH_UserObject(path);
-      
+
 
             //RhinoApp.WriteLine("✅ Successfully loaded .ghuser:");
             //RhinoApp.WriteLine($"   Name: {userObject.Description.NickName}");

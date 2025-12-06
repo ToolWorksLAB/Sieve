@@ -5,10 +5,16 @@ using Rhino.Commands;
 using Rhino.Geometry;
 using Rhino.Input;
 using Rhino.Input.Custom;
-using GhPlugins.UI;
+using Sieve.UI;
+
+/* Unmerged change from project 'Sieve (net7.0)'
+Added:
+using GhPlugins;
+using Sieve;
+*/
 
 
-namespace GhPlugins
+namespace Sieve
 {
     public class GhPluginsCommand : Command
     {
@@ -23,18 +29,18 @@ namespace GhPlugins
         public static GhPluginsCommand Instance { get; private set; }
 
         ///<returns>The command name as it appears on the Rhino command line.</returns>
-        public override string EnglishName => "GhPluginsCommand";
+        public override string EnglishName => "Sieve";
 
         protected override Result RunCommand(RhinoDoc doc, RunMode mode)
         {
-            RhinoApp.WriteLine("RunCommand reached successfully.");
+            // RhinoApp.WriteLine("RunCommand reached successfully.");
 
             try
             {
                 var dialog = new ModeManagerDialog();
-                RhinoApp.WriteLine("Dialog constructed.");
+                RhinoApp.WriteLine("😊 Sieve.");
                 dialog.ShowModal(Rhino.UI.RhinoEtoApp.MainWindow);
-                RhinoApp.WriteLine("Dialog ShowModal finished.");
+
             }
             catch (Exception ex)
             {

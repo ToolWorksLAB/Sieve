@@ -2,15 +2,15 @@
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
-using GhPlugins.Models;
+using Sieve.Models;
 
-namespace GhPlugins.Services
+namespace Sieve.services
 {
     public static class ModeManager
     {
         private static string ConfigFilePath =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                         "GhPlugins", "ghplugin_envs.json");
+                         "Sieve", "ghplugin_envs.json");
 
         static ModeManager()
         {

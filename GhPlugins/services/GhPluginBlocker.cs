@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using GhPlugins.Models;
 using Grasshopper.Kernel.Data;
 using Rhino;
+using Sieve.Models;
 
-namespace GhPlugins.Services
+namespace Sieve.services
 {
     public static class GhPluginBlocker
     {
@@ -64,7 +64,7 @@ namespace GhPlugins.Services
                             Toggle(path, enable: false);
 
                         // Then (re)enable the primary one according to selection state
-                        var primaryGha = plugin.GhaPaths[plugin.GhaPaths.Count-1];
+                        var primaryGha = plugin.GhaPaths[plugin.GhaPaths.Count - 1];
                         if (!string.IsNullOrWhiteSpace(primaryGha))
                         {
                             Toggle(primaryGha, enable: selected);
@@ -356,7 +356,7 @@ namespace GhPlugins.Services
                             File.Delete(restored);
 
                         File.Move(file, restored);
-                        RhinoApp.WriteLine("✅ Restored: {0}", Path.GetFileName(restored));
+                        //RhinoApp.WriteLine("✅ Restored: {0}", Path.GetFileName(restored));
                     }
                     catch (Exception ex)
                     {

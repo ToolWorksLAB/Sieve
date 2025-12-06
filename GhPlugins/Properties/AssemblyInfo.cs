@@ -5,12 +5,12 @@ using Rhino.PlugIns;
 
 // Plug-in Description Attributes - all of these are optional.
 // These will show in Rhino's option dialog, in the tab Plug-ins.
-[assembly: PlugInDescription(DescriptionType.Address, "AVE MARE DUE DE MONTSERRAT, BARCELONA")]
+[assembly: PlugInDescription(DescriptionType.Address, "CALLE PERE IV No 29–35, 4o1o,08018 Barcelona,Spain")]
 [assembly: PlugInDescription(DescriptionType.Country, "SPAIN")]
 [assembly: PlugInDescription(DescriptionType.Email, "info@toolworkslab.com ")]
 [assembly: PlugInDescription(DescriptionType.Phone, "+34 697173477")]
 [assembly: PlugInDescription(DescriptionType.Fax, "")]
-[assembly: PlugInDescription(DescriptionType.Organization, "")]
+[assembly: PlugInDescription(DescriptionType.Organization, "TOOLWorksLAB")]
 [assembly: PlugInDescription(DescriptionType.UpdateUrl, "")]
 [assembly: PlugInDescription(DescriptionType.WebSite, "toolworkslab.com")]
 
