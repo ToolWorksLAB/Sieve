@@ -38,7 +38,7 @@ namespace Sieve
             try
             {
                 var dialog = new ModeManagerDialog();
-                RhinoApp.WriteLine("😊 Sieve.");
+                //RhinoApp.WriteLine("😊 Sieve.");
                 dialog.ShowModal(Rhino.UI.RhinoEtoApp.MainWindow);
 
             }

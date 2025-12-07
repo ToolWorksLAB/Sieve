@@ -8,8 +8,8 @@ using Rhino;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
-using JsonSerializer = System.Text.Json.JsonSerializer;
+
+
 using Sieve.services;
 using Sieve.Models;
 using Sieve.UI;
@@ -28,7 +28,7 @@ namespace Sieve.UI
 
         public ModeManagerDialog()
         {
-            Title = "Grasshopper Environemnt Manager";
+            Title = "Sieve";
             ClientSize = new Size(730, 200);
             Resizable = false;
 
@@ -240,7 +240,7 @@ namespace Sieve.UI
 
             var checkForm = new CheckBoxForm(
     PluginScanner.pluginItems,
-    startUnchecked: false,
+    startUnchecked: true,
     onRescan: () =>
     {
         // No need to reset allPlugins here; focus on updating PluginScanner.pluginItems

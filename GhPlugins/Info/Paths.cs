@@ -5,49 +5,58 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace Sieve.Info
 {
     public class Paths
     {
         public static string GhEnvFolder =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Sieve");
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Sieve");
 
         public static string ScanFilePath => Path.Combine(GhEnvFolder, "scan.json");
         public static string CustomPath => Path.Combine(GhEnvFolder, "CustomPath.json");
     }
+
     public class Tools
     {
         public static void SaveScan(List<PluginItem> scanData)
         {
-            Directory.CreateDirectory(Paths.GhEnvFolder); // safe even if it exists
+            if (scanData == null)
+                return;
 
-            var options = new JsonSerializerOptions
+            // Ensure folder exists
+            Directory.CreateDirectory(Paths.GhEnvFolder);
+
+            var settings = new JsonSerializerSettings
             {
-                WriteIndented = true
+                Formatting = Formatting.Indented
             };
-            string json = JsonSerializer.Serialize(scanData, options);
+
+            string json = JsonConvert.SerializeObject(scanData, settings);
             File.WriteAllText(Paths.ScanFilePath, json);
-
         }
-
 
         public static List<Models.PluginItem> LoadScan()
         {
-            if (!File.Exists(Paths.ScanFilePath))
-                return new List<Models.PluginItem>();
-
-            string json = File.ReadAllText(Paths.ScanFilePath);
-
-            var options = new JsonSerializerOptions
+            try
             {
-                PropertyNameCaseInsensitive = true
-            };
+                if (!File.Exists(Paths.ScanFilePath))
+                    return new List<Models.PluginItem>();
 
-            return JsonSerializer.Deserialize<List<Models.PluginItem>>(json, options)
-                   ?? new List<Models.PluginItem>();
+                string json = File.ReadAllText(Paths.ScanFilePath);
+                if (string.IsNullOrWhiteSpace(json))
+                    return new List<Models.PluginItem>();
+
+                var items = JsonConvert.DeserializeObject<List<Models.PluginItem>>(json);
+                return items ?? new List<Models.PluginItem>();
+            }
+            catch
+            {
+                // On any error, just return empty list
+                return new List<Models.PluginItem>();
+            }
         }
 
         public static void AppendPathToJson(string newPath)
@@ -56,7 +65,7 @@ namespace Sieve.Info
                 return;
 
             if (string.IsNullOrWhiteSpace(Paths.CustomPath))
-                return; // caller didn’t set it, so do nothing
+                return; // no target path defined
 
             try
             {
@@ -69,7 +78,7 @@ namespace Sieve.Info
                     var json = File.ReadAllText(filePath);
                     if (!string.IsNullOrWhiteSpace(json))
                     {
-                        paths = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+                        paths = JsonConvert.DeserializeObject<List<string>>(json) ?? new List<string>();
                     }
                     else
                     {
@@ -95,23 +104,20 @@ namespace Sieve.Info
                         Directory.CreateDirectory(dir);
 
                     // Save back to JSON (pretty printed)
-                    var jsonOut = JsonSerializer.Serialize(
+                    var jsonOut = JsonConvert.SerializeObject(
                         paths,
-                        new JsonSerializerOptions { WriteIndented = true }
+                        new JsonSerializerSettings { Formatting = Formatting.Indented }
                     );
                     File.WriteAllText(filePath, jsonOut);
                 }
             }
             catch (Exception ex)
             {
-                // You can remove this if you don't want UI errors
                 MessageBox.Show(
                     "Could not save the new path:\n" + ex.Message,
                     "Error saving path",
                     MessageBoxType.Error);
             }
-
-
         }
 
         public static List<string> LoadCustomPaths()
@@ -131,7 +137,7 @@ namespace Sieve.Info
                 if (string.IsNullOrWhiteSpace(json))
                     return result;
 
-                var paths = JsonSerializer.Deserialize<List<string>>(json);
+                var paths = JsonConvert.DeserializeObject<List<string>>(json);
                 if (paths == null)
                     return result;
 
@@ -147,10 +153,9 @@ namespace Sieve.Info
             catch
             {
                 // If anything goes wrong (invalid JSON, IO error, etc.),
-                // just return an empty list. Optionally log the exception.
+                // just return an empty list.
                 return new List<string>();
             }
         }
     }
 }
-

@@ -29,7 +29,7 @@ namespace Sieve.UI
         public CheckBoxForm(IList<PluginItem> plugins, bool startUnchecked = true)
         {
             Title = "Select Plugins";
-            ClientSize = new Size(550, 550);
+            ClientSize = new Size(700, 550);
             MinimumSize = new Size(460, 460);
             Resizable = true;
 
