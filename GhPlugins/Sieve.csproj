@@ -15,10 +15,10 @@
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
-    <Version>1.0</Version>
-    <Title>GhPlugins</Title>
-    <Company>GhPlugins Authors</Company>
-    <Description>Description of GhPlugins</Description>
+    <Version>0.1</Version>
+    <Title>Sieve</Title>
+    <Company>ToolWorksLAB</Company>
+    <Description>Grasshopper Plugin Manager/ Enironment manager. </Description>
   </PropertyGroup>
   
   <ItemGroup>

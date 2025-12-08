@@ -135,15 +135,9 @@ namespace Sieve.UI
 
         private void CreateEnvironment()
         {
+            // 1) Make sure we have a plugin list
             if (PluginScanner.pluginItems == null || PluginScanner.pluginItems.Count == 0)
             {
-
-                /* Unmerged change from project 'Sieve (net7.0)'
-                Before:
-                                var loaded = Info.Tools.LoadScan();
-                After:
-                                var loaded = Tools.LoadScan();
-                */
                 var loaded = Info.Tools.LoadScan();
 
                 if (loaded != null && loaded.Count > 0)
@@ -153,52 +147,62 @@ namespace Sieve.UI
                 else
                 {
                     // Nothing to load → perform fresh scan
-                    PluginScanner.ScanDefaultPluginFolders(); // <-- your actual scan method here
-
-                    // Save the new scan result
-
-                    /* Unmerged change from project 'Sieve (net7.0)'
-                    Before:
-                                        Info.Tools.SaveScan(PluginScanner.pluginItems);
-                                    }
-                    After:
-                                        Tools.SaveScan(PluginScanner.pluginItems);
-                                    }
-                    */
+                    PluginScanner.ScanDefaultPluginFolders(); // your actual scan
                     Info.Tools.SaveScan(PluginScanner.pluginItems);
                 }
-
-                allPlugins = PluginScanner.pluginItems;
             }
 
-            var checkForm = new CheckBoxForm(PluginScanner.pluginItems,
+            // Always keep allPlugins in sync with pluginItems
+            allPlugins = PluginScanner.pluginItems;
 
-                true,
-                () =>
+            // 2) Show the selection dialog
+            var checkForm = new CheckBoxForm(
+                PluginScanner.pluginItems,
+                startUnchecked: true,
+                onRescan: () =>
                 {
-                    ;
-                    return PluginScanner.pluginItems;
+                    // Optional: rescan logic if you want it here too
+                    PluginScanner.ScanDefaultPluginFolders();
+                    Info.Tools.SaveScan(PluginScanner.pluginItems);
+
+                    allPlugins = PluginScanner.pluginItems;
+                    return PluginScanner.pluginItems.ToList();
                 });
 
-            // If you don't have the 3-arg overload yet, use:
-            // var checkForm = new CheckBoxForm(allPlugins, true);
+            var result = checkForm.ShowModal(this);
+            if (result != DialogResult.Ok)
+                return;
 
-            if (checkForm.ShowModal(this) == DialogResult.Ok)
+            // 3) Read selected plugins from pluginItems (NOT allPlugins, which might be empty)
+            var selected = PluginScanner.pluginItems
+                .Where(p => p.IsSelected)
+                .ToList();
+
+            if (selected.Count == 0)
             {
-                var selected = allPlugins.Where(p => p.IsSelected).ToList();
-                if (selected.Count == 0) return;
-
-                string envName = InputBox("Name this environment:");
-                if (string.IsNullOrWhiteSpace(envName)) return;
-
-                var environments = ModeManager.LoadEnvironments();
-                environments.Add(new ModeConfig(envName, selected));
-                ModeManager.SaveEnvironments(environments);
-
-                RhinoApp.WriteLine("Environment '{0}' created with {1} plugins.", envName, selected.Count);
-                launchButton.Enabled = true;
+                MessageBox.Show(this,
+                    "No plugins selected. Environment was not created.",
+                    "Sieve");
+                return;
             }
+
+            // 4) Ask for environment name
+            string envName = InputBox("Name this environment:");
+            if (string.IsNullOrWhiteSpace(envName))
+                return;
+
+            // 5) Save the environment
+            var environments = ModeManager.LoadEnvironments();
+            var newEnv = new ModeConfig(envName, selected);
+            environments.Add(newEnv);
+            ModeManager.SaveEnvironments(environments);
+
+            selectedEnvironment = newEnv; // so Launch uses it directly
+            launchButton.Enabled = true;
+
+            RhinoApp.WriteLine("Environment '{0}' created with {1} plugins.", envName, selected.Count);
         }
+
 
         private void ManualPluginSelection()
         {
@@ -272,7 +276,6 @@ namespace Sieve.UI
             }
         }
 
-
         private void SelectSavedEnvironment()
         {
             var environments = ModeManager.LoadEnvironments();
@@ -282,16 +285,80 @@ namespace Sieve.UI
                 return;
             }
 
-            var names = environments.Select(e => e.Name).ToArray();
-            var dialog = new SelectListDialog("Select an Environment", names);
+            var dialog = new EnvironmentSelectDialog(environments);
+            var result = dialog.ShowModal(this);
+            if (result == null)
+                return; // cancelled
 
-            if (dialog.ShowModal(this) == DialogResult.Ok)
+            if (result.IsDelete)
             {
-                string selectedName = dialog.SelectedItem;
-                selectedEnvironment = environments.FirstOrDefault(e => e.Name == selectedName);
-                launchButton.Enabled = selectedEnvironment != null && selectedEnvironment.Plugins != null && selectedEnvironment.Plugins.Count > 0;
+                var toDelete = environments.FirstOrDefault(e => e.Name == result.SelectedName);
+                if (toDelete != null)
+                {
+                    environments.Remove(toDelete);
+                    ModeManager.SaveEnvironments(environments);
+
+                    MessageBox.Show(this,
+                        $"Environment '{result.SelectedName}' deleted.",
+                        "Sieve");
+
+                    if (selectedEnvironment != null && selectedEnvironment.Name == result.SelectedName)
+                    {
+                        selectedEnvironment = null;
+                        launchButton.Enabled = false;
+                    }
+                }
+                return;
             }
+
+            // ---------- NORMAL SELECTION PATH ----------
+
+            var env = environments.FirstOrDefault(e => e.Name == result.SelectedName);
+            if (env == null)
+                return;
+
+            selectedEnvironment = env;
+
+            // 1) Make sure allPlugins is populated
+            if (allPlugins == null || allPlugins.Count == 0)
+            {
+                if (PluginScanner.pluginItems != null && PluginScanner.pluginItems.Count > 0)
+                {
+                    allPlugins = PluginScanner.pluginItems;
+                }
+                else
+                {
+                    var loaded = Info.Tools.LoadScan();
+                    if (loaded != null && loaded.Count > 0)
+                    {
+                        PluginScanner.pluginItems = loaded;
+                        allPlugins = loaded;
+                    }
+                    else
+                    {
+                        // last fallback: scan now (same behavior as Manual selection / Create)
+                        PluginScanner.ScanDefaultPluginFolders();
+                        Info.Tools.SaveScan(PluginScanner.pluginItems);
+                        allPlugins = PluginScanner.pluginItems;
+                    }
+                }
+            }
+
+            // 2) Map environment plugins → IsSelected flags on allPlugins
+            var selectedNames = new HashSet<string>(
+                env.Plugins.Select(p => p.Name),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var p in allPlugins)
+            {
+                if (p == null) continue;
+                p.IsSelected = selectedNames.Contains(p.Name);
+            }
+
+            launchButton.Enabled = selectedEnvironment.Plugins != null &&
+                                   selectedEnvironment.Plugins.Count > 0;
         }
+
 
         public void LaunchGrasshopper()
         {
@@ -303,7 +370,7 @@ namespace Sieve.UI
 
             try
             {
-                RhinoApp.WriteLine("[Gh Mode Manager] Environment applied.");
+                RhinoApp.WriteLine("[Sieve] Environment applied.");
                 RhinoApp.Idle += LaunchGrasshopperOnIdle;
                 Close();
             }
@@ -353,33 +420,51 @@ namespace Sieve.UI
 
         private string InputBox(string message)
         {
-            var prompt = new Dialog<string> { Title = message, ClientSize = new Size(300, 120), Resizable = false };
-            var input = new TextBox();
+            var prompt = new Dialog<string>
+            {
+                Title = message,
+                ClientSize = new Size(200, 140),
+                Resizable = false
+            };
+
+            var input = new TextBox
+            {
+                Width = 200   // fixed width so centering is visible
+            };
+
             var ok = new Button { Text = "OK" };
-            var cancel = new Button { Text = "Cancel" };
+            
             string result = null;
 
             ok.Click += (s, e) => { result = input.Text; prompt.Close(); };
-            cancel.Click += (s, e) => { prompt.Close(); };
+            
 
             prompt.Content = new StackLayout
             {
                 Padding = new Padding(10),
+                Spacing = 8,
+                HorizontalContentAlignment = HorizontalAlignment.Center, // << center children
                 Items =
-                {
-                    new Label { Text = message },
-                    input,
-                    new StackLayout
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Spacing = 10,
-                        Items = { ok, cancel }
-                    }
-                }
+        {
+            new Label
+            {
+                Text = message,
+                TextAlignment = TextAlignment.Center
+            },
+            input,
+            new StackLayout
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                Items = { ok }
+            }
+        }
             };
 
             prompt.ShowModal(this);
             return result;
         }
+
     }
 }

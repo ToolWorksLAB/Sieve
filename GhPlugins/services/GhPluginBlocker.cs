@@ -55,7 +55,19 @@ namespace Sieve.services
                 try
                 {
                     bool selected = plugin.IsSelected;
-
+                    // --- DLLs for Yak / packages ---
+                    if (string.Equals(plugin.LocationType, "packages", StringComparison.OrdinalIgnoreCase) &&
+                        plugin.DllPaths != null)
+                    {
+                        foreach (var dllPath in plugin.DllPaths.Where(s => !string.IsNullOrWhiteSpace(s)))
+                        {
+                            // Only toggle each dll once
+                            if (processedDlls.Add(dllPath))
+                            {
+                                Toggle(dllPath, enable: selected);
+                            }
+                        }
+                    }
                     // --- GHAs ---
                     if (plugin.GhaPaths != null && plugin.GhaPaths.Count > 0)
                     {
@@ -85,24 +97,12 @@ namespace Sieve.services
                             Toggle(path, enable: selected);
                     }
 
-                    // --- DLLs for Yak / packages ---
-                    if (string.Equals(plugin.LocationType, "packages", StringComparison.OrdinalIgnoreCase) &&
-                        plugin.DllPaths != null)
-                    {
-                        foreach (var dllPath in plugin.DllPaths.Where(s => !string.IsNullOrWhiteSpace(s)))
-                        {
-                            // Only toggle each dll once
-                            if (processedDlls.Add(dllPath))
-                            {
-                                Toggle(dllPath, enable: selected);
-                            }
-                        }
-                    }
+
                 }
                 catch (Exception ex)
                 {
                     RhinoApp.WriteLine(
-                        "⚠️ Error toggling {0}: {1}",
+                        "⚠️ Error toggling {0}: {1},,, Try to open Rhino as Adminstrator",
                         plugin?.Name ?? "<null>",
                         ex.Message
                     );

@@ -10,7 +10,7 @@ namespace Sieve.services
     {
         private static string ConfigFilePath =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                         "Sieve", "ghplugin_envs.json");
+                         "Sieve", "Sieve_envs.json");
 
         static ModeManager()
         {
