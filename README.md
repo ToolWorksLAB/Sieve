@@ -57,8 +57,40 @@ Planned features for future versions:
    - In Rhino, open **_Tools → Options → Plug-ins_**.  
    - Click **Install…**, browse to the `.rhp` file, and load it.
 
-### From source
-1. Clone this repository:
+## Contributing
+
+First of all, thank you for your interest in contributing to **Sieve** 💚  
+This project is meant to be community-driven, so feedback, ideas, and code contributions are very welcome.
+
+---
+
+### Ways you can help
+
+- 🐞 **Report bugs** – strange behaviour, crashes, UI glitches, anything.
+- 💡 **Suggest features / UX improvements** – new workflows, presets, or UI ideas.
+- 🧪 **Test new builds** – especially on different Rhino / Grasshopper setups.
+- 💻 **Contribute code** – fix issues, refactor, or implement items from the roadmap.
+- 📚 **Improve documentation** – better explanations, screenshots, GIFs, examples.
+
+---
+
+### Before you start contributing:D
+
+1. **Check the Issues**
+   - Look for an existing issue that matches your bug / feature idea.
+   - If there isn’t one, create a new issue with a clear description.
+
+2. **Discuss first (optional but helpful)**
+   - Comment on the issue with your plan or questions.
+   - This avoids duplicate work and big mismatches in expectations.
+
+---
+
+### Setting up the development environment
+
+1. **Clone the repo**
 
    ```bash
-   git clone https://github.com/<your-username>/<your-repo-name>.git
+   git clone https://github.com/toolworkslab/sieve.git
+   cd sieve
+
